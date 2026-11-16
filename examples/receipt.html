@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="id">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contoh struk POS</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px; background: #f5f7f5; color: #183c3a; font: 16px system-ui, sans-serif; }
+  main { max-width: 420px; margin: 36px auto; }
+  .receipt { background: #fff; padding: 24px; font: 12px/1.6 monospace; color: #000; }
+  h1 { margin: 0; font: bold 18px monospace; text-align: center; }
+  .center { text-align: center; }
+  .row { display: flex; justify-content: space-between; gap: 12px; }
+  hr { border: 0; border-top: 1px dashed #555; margin: 16px 0; }
+  button { width: 100%; margin-top: 20px; border: 0; border-radius: 12px; padding: 16px; background: #087f72; color: #fff; font: inherit; cursor: pointer; }
+  .hint { font-size: 13px; line-height: 1.6; color: #6f7e7b; }
+  @page { margin: 0; }
+  @media print {
+    body { padding: 0; background: #fff; }
+    main { margin: 0; max-width: none; }
+    .receipt { padding: 3mm 2mm; font-size: 9pt; }
+    button, .hint { display: none; }
+    .row { break-inside: avoid; }
+  }
+</style>
+<main>
+  <article class="receipt">
+    <h1>DNT POS</h1>
+    <p class="center">Contoh integrasi cetak website<br>Struk uji · bukan transaksi</p>
+    <hr>
+    <div class="row"><span>Kopi susu</span><span>18.000</span></div>
+    <div class="row"><span>Roti panggang</span><span>15.000</span></div>
+    <hr>
+    <div class="row"><strong>TOTAL</strong><strong>Rp 33.000</strong></div>
+    <p class="center">Terima kasih!</p>
+  </article>
+  <button type="button" onclick="window.print()">Cetak struk</button>
+  <p class="hint">Buka halaman ini di Chrome atau browser Android lain. Aktifkan Print Service · Bluetooth POS, lalu pilih printer dan kertas 58 / 80 mm di dialog cetak. Jika tombol tidak membuka dialog, gunakan menu browser → Bagikan → Cetak.</p>
+</main>
+</html>

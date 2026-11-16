@@ -1,0 +1,19 @@
+{
+    "name": "Print Service",
+    "short_name": "Print Service",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#F5F7F5",
+    "theme_color": "#087F72",
+    "description": "Layanan cetak Bluetooth POS 58 dan 80 mm untuk Android.",
+    "orientation": "any",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}

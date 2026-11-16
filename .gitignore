@@ -1,0 +1,37 @@
+# Flutter dan Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+coverage/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Berkas lokal dan rahasia
+.env
+.env.*
+!.env.example
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+
+# Platform yang dihasilkan Flutter
+**/flutter/ephemeral/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+macos/Pods/
+macos/.symlinks/
+
+# Sistem operasi
+.DS_Store
+Thumbs.db
+# Widget Preview related
+.widget_preview/
