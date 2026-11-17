@@ -9,7 +9,7 @@
         android:name="${applicationName}"
         android:allowBackup="false"
         android:usesCleartextTraffic="false"
-        android:icon="@drawable/ic_print_service">
+        android:icon="@mipmap/launcher_icon">
         <service
             android:name=".PosPrintService"
             android:label="Print Service · Bluetooth POS"
