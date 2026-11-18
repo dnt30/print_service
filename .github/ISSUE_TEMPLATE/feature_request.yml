@@ -1,0 +1,27 @@
+name: Usulan fitur
+description: Usulkan peningkatan dengan menjelaskan kebutuhan dan contoh penggunaannya.
+title: "[Fitur]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Masalah yang ingin diselesaikan
+      description: Jelaskan kebutuhan pengguna dan keterbatasan alur saat ini.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solusi yang diusulkan
+      description: Jelaskan perilaku yang diharapkan dan contoh penggunaan dengan data buatan.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatif yang sudah dipertimbangkan
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Perangkat dan kesediaan menguji
+      description: Jika terkait printer atau platform baru, sebutkan model, protokol, lebar kertas, dan apakah Anda dapat menguji perangkat fisik. Jangan sertakan alamat MAC asli.

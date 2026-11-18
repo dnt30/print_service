@@ -5,6 +5,7 @@
 .pub-cache/
 .pub/
 build/
+android/.kotlin/
 coverage/
 
 # IDE
@@ -20,6 +21,11 @@ android/local.properties
 android/key.properties
 *.jks
 *.keystore
+*.p12
+*.pfx
+*.pem
+*.key
+.aws/
 
 # Platform yang dihasilkan Flutter
 **/flutter/ephemeral/

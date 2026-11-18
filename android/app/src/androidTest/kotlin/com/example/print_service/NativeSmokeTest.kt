@@ -14,10 +14,74 @@ import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
 import java.io.ByteArrayOutputStream
+import kotlin.math.abs
 
 class NativeSmokeTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
+
+    @Test fun pdfEnlargesReceiptContentByFivePercentOnBothPaperWidths() {
+        for ((paper, pageWidth) in listOf(58 to 164, 80 to 227)) {
+            val bytes = renderRectangle(paper, pageWidth, 20f, 100f)
+            val width = EscPos.dots(paper)
+            val bounds = rasterInkBounds(bytes, width)
+            val expectedWidth = 80f * width / pageWidth * 1.05f
+            assertTrue("Receipt should be enlarged by 5%", abs(bounds.second - bounds.first + 1 - expectedWidth) <= 2)
+            val rows = (bytes[6].toInt() and 255) + ((bytes[7].toInt() and 255) shl 8)
+            assertTrue("Vertical scale should match horizontal scale", abs(rows - 20f * width / pageWidth * 1.05f) <= 2)
+        }
+    }
+
+    @Test fun pdfKeepsContentAtBothEdgesWhenThereIsNoRoomToEnlarge() {
+        for ((paper, pageWidth) in listOf(58 to 164, 80 to 227)) {
+            val bytes = renderRectangle(paper, pageWidth, 0f, pageWidth.toFloat())
+            val width = EscPos.dots(paper)
+            assertEquals(0 to width - 1, rasterInkBounds(bytes, width))
+            val rows = (bytes[6].toInt() and 255) + ((bytes[7].toInt() and 255) shl 8)
+            assertTrue("Full-width content must retain its scale", abs(rows - 20f * width / pageWidth) <= 2)
+        }
+    }
+
+    @Test fun pdfCanEnlargeLeftAlignedContentWithoutCuttingItsLeftEdge() {
+        val bytes = renderRectangle(58, 164, 0f, 80f)
+        val bounds = rasterInkBounds(bytes, 384)
+        assertEquals(0, bounds.first)
+        assertTrue(abs(bounds.second + 1 - 80f * 384 / 164 * 1.05f) <= 2)
+    }
+
+    private fun renderRectangle(paper: Int, pageWidth: Int, left: Float, right: Float): ByteArray {
+        val file = File.createTempFile("scale-test-", ".pdf", context.cacheDir)
+        try {
+            val document = PdfDocument()
+            try {
+                val page = document.startPage(PdfDocument.PageInfo.Builder(pageWidth, 80, 1).create())
+                page.canvas.drawRect(left, 10f, right, 20f, Paint().apply { color = Color.BLACK })
+                document.finishPage(page)
+                file.outputStream().use { document.writeTo(it) }
+            } finally { document.close() }
+            val output = ByteArrayOutputStream()
+            EscPos.pdf(ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY), paper, 1,
+                output, JobControl(), false)
+            return output.toByteArray()
+        } finally { file.delete() }
+    }
+
+    private fun rasterInkBounds(bytes: ByteArray, width: Int): Pair<Int, Int> {
+        assertArrayEquals(byteArrayOf(0x1d, 0x76, 0x30, 0), bytes.take(4).toByteArray())
+        val widthBytes = (bytes[4].toInt() and 255) + ((bytes[5].toInt() and 255) shl 8)
+        val rows = (bytes[6].toInt() and 255) + ((bytes[7].toInt() and 255) shl 8)
+        assertEquals(width, widthBytes * 8)
+        assertEquals("Fixture must produce one raster strip and a feed", 8 + widthBytes * rows + 3, bytes.size)
+        var left = width
+        var right = -1
+        for (y in 0 until rows) for (x in 0 until width) {
+            if ((bytes[8 + y * widthBytes + x / 8].toInt() and (0x80 shr (x % 8))) != 0) {
+                left = minOf(left, x)
+                right = maxOf(right, x)
+            }
+        }
+        return left to right
+    }
 
     @Test fun pdfHonorsPageSelectionAndTrimsEmptyTail() {
         val file = File(context.cacheDir, "smoke-receipt.pdf")

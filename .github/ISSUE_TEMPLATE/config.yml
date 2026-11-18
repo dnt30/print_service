@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Pelaporan kerentanan keamanan
+    url: https://github.com/dnt30/print_service/blob/HEAD/SECURITY.md
+    about: Gunakan panduan pelaporan privat; jangan sertakan rincian kerentanan pada issue publik.

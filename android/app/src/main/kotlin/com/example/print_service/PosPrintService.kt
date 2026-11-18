@@ -17,6 +17,7 @@ import android.print.PrinterInfo
 import android.printservice.PrintJob
 import android.printservice.PrintService
 import android.printservice.PrinterDiscoverySession
+import android.util.Log
 
 class PosPrintService : PrintService() {
     private val main = Handler(Looper.getMainLooper())
@@ -53,16 +54,16 @@ class PosPrintService : PrintService() {
             var status = "sent"
             var error: String? = null
             try {
-                fd.use {
-                    control.check()
+                SpoolDocument.withRenderer(fd, cacheDir, control) { renderer ->
                     BluetoothTransport.send(this, address, control) { output ->
-                        EscPos.pdf(it, paper, copies, output, control, StateStore.cut(this), ranges)
+                        EscPos.pdf(renderer, paper, copies, output, control, StateStore.cut(this), ranges)
                     }
                 }
                 StateStore.select(this, address, name, used = true)
             } catch (e: PrintCancelled) {
                 status = "cancelled"; error = e.message
             } catch (e: Exception) {
+                Log.e("PosPrintService", "System print job failed", e)
                 status = "failed"; error = e.message ?: "Gagal mencetak dokumen."
             }
             StateStore.record(this, title, name, paper, status, error)

@@ -5,12 +5,12 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import java.io.IOException
 import java.io.OutputStream
+import java.io.Closeable
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -86,10 +86,10 @@ object BluetoothTransport {
 
 class JobControl {
     private val cancelled = AtomicBoolean(false)
-    @Volatile private var socket: BluetoothSocket? = null
-    fun attach(value: BluetoothSocket) { socket = value; if (cancelled.get()) runCatching { value.close() } }
-    fun detach() { socket = null }
-    fun cancel() { cancelled.set(true); runCatching { socket?.close() } }
+    @Volatile private var resource: Closeable? = null
+    fun attach(value: Closeable) { resource = value; if (cancelled.get()) runCatching { value.close() } }
+    fun detach() { resource = null }
+    fun cancel() { cancelled.set(true); runCatching { resource?.close() } }
     fun check() { if (cancelled.get()) throw PrintCancelled() }
 }
 

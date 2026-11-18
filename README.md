@@ -1,5 +1,7 @@
 # Print Service
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Aplikasi Flutter dengan layanan cetak native Android untuk printer POS **Bluetooth Classic SPP / ESC/POS**. Kertas default **58 mm**, dengan pilihan **80 mm** sebelum mencetak. Antarmuka berbahasa Indonesia, menyesuaikan layar ponsel dan tablet.
 
 ## Fitur
@@ -8,6 +10,8 @@ Aplikasi Flutter dengan layanan cetak native Android untuk printer POS **Bluetoo
 - Menyimpan hingga 30 printer, printer utama, ukuran kertas, serta 100 catatan cetak secara lokal.
 - Dialog cetak teks dengan pratinjau, 58/80 mm, dan 1–5 salinan; tersedia struk uji.
 - Android `PrintService`: printer muncul pada dialog cetak sistem setelah layanan diaktifkan. Dokumen PDF/HTML dirender menjadi raster ESC/POS, termasuk gambar dan teks Unicode.
+- Dokumen dari spooler Android dibaca sampai lengkap ke berkas sementara privat sebelum dirender, sehingga pipe dari Chrome dapat dicetak. Berkas sementara dihapus setelah pekerjaan selesai, gagal, atau dibatalkan.
+- Hasil PDF/browser diperbesar hingga 5% dengan memakai ruang kosong di sisi halaman. Pembesaran dibatasi saat konten sudah memenuhi lebar cetak agar bagian tepi tetap masuk pada kertas 58/80 mm.
 - Menerima pekerjaan cetak dari Chrome, browser luar, dan aplikasi lain melalui dialog cetak Android. Website dibuka menggunakan browser bawaan ponsel.
 - Antrean cetak bersama untuk mencegah data dari dua pekerjaan bercampur, batas waktu koneksi/tulis, dan pembatalan pekerjaan melalui antrean cetak Android.
 - Pemotong otomatis opsional; nonaktif secara default.
@@ -41,6 +45,13 @@ Contoh struk responsif: [`examples/receipt.html`](examples/receipt.html). Sajika
 **Batas platform:** hanya browser/aplikasi yang mendukung Android Print Framework dapat memakai penyedia printer ini. Bluetooth BLE/GATT, printer non-ESC/POS, iOS, dan AirPrint belum diimplementasikan. Build web adalah pratinjau UI dan tidak menyediakan koneksi Bluetooth Classic.
 
 ## Pengembangan dan build
+
+Clone repositori sebelum menjalankan perintah di bawah. Untuk berkontribusi, clone fork Anda sesuai [panduan kontribusi](CONTRIBUTING.md).
+
+```sh
+git clone https://github.com/dnt30/print_service.git
+cd print_service
+```
 
 - Flutter **3.50+**, Dart **3.14+**, Android SDK 36; minimum Android 7.0 / API 24.
 - Gradle 9.5, Android Gradle Plugin 9.3.1; gunakan JDK kompatibel (Android Studio JBR 25 pada mesin ini).
@@ -95,6 +106,7 @@ flutter build web
 | `lib/src/print_controller.dart` | State Flutter dan kontrak MethodChannel |
 | `android/.../MainActivity.kt` | Perizinan dan jembatan Flutter → Android |
 | `android/.../PosPrintService.kt` | Penemuan printer dan antrean cetak sistem |
+| `android/.../SpoolDocument.kt` | Penerimaan pipe spooler ke berkas sementara untuk renderer PDF |
 | `android/.../BrowserLauncher.kt` | Intent pembukaan URL melalui browser luar |
 | `android/.../BluetoothTransport.kt` | Koneksi SPP, antrean, timeout, pembatalan |
 | `android/.../EscPos.kt` | Render teks/PDF per potongan kecil ke ESC/POS |
@@ -109,4 +121,28 @@ Pengujian otomatis mencakup UI ukuran ponsel/tablet, dialog dan payload cetak, e
 
 Verifikasi versi 1.1.0: **10 tes Flutter, 4 tes unit encoder, dan 6 tes Android pada emulator lulus**. Pada Chrome **157.0.8103.78**, tombol `window.print()` dari halaman di browser luar langsung membuka dialog cetak Android; layanan Print Service terdaftar dalam sistem. Pengujian lintas aplikasi tidak memakai WebView. Build debug, release per arsitektur, dan web berhasil. Belum ada pengujian dengan printer fisik.
 
+Perbaikan versi 1.1.1: kegagalan `File descriptor not seekable` berhasil direproduksi pada jalur lama menggunakan pipe Android. Dokumen spooler kini disalin ke berkas sementara privat dan dibuka sebagai PDF sebelum koneksi Bluetooth dibuat. **4 tes unit encoder dan 10 tes Android lulus**, termasuk pipe yang melebihi kapasitas buffer, PDF tidak valid, pembatalan sebelum dan selama penerimaan, pembersihan berkas sementara, serta `window.print()` dari Chrome. APK release untuk ketiga arsitektur berhasil dibangun. Hasil kertas pada printer fisik masih perlu diuji ulang.
+
+Versi 1.1.2 memperbesar hasil PDF/browser hingga **5%**, dengan proporsi tetap dan batas berdasarkan isi halaman agar bagian tepi tetap masuk ke lebar cetak. Lebar raster tetap 384/576 dot. **4 tes unit encoder dan 13 tes Android lulus**, termasuk ukuran hasil pada kedua lebar kertas, konten di kedua tepi, dan konten rata kiri. APK release untuk ketiga arsitektur berhasil dibangun; ukuran hasil di printer fisik masih perlu dibandingkan.
+
 Referensi: [Android PrintService](https://developer.android.com/reference/android/printservice/PrintService), [cetak dari Chrome Android](https://support.google.com/chrome/answer/1069693?co=GENIE.Platform%3DAndroid&hl=en), dan [izin Bluetooth](https://developer.android.com/develop/connectivity/bluetooth/bt-permissions).
+
+## Kontribusi dan komunitas
+
+Laporan bug, usulan fitur, dokumentasi, dan hasil pengujian printer diterima melalui [GitHub Issues](https://github.com/dnt30/print_service/issues) dan pull request. Baca [CONTRIBUTING.md](CONTRIBUTING.md), ikuti [kode etik](CODE_OF_CONDUCT.md), dan lihat [changelog](CHANGELOG.md). Untuk kerentanan, gunakan jalur privat dalam [SECURITY.md](SECURITY.md).
+
+GitHub Actions menjalankan pemeriksaan format Dart, analisis, dan tes Flutter menggunakan Flutter **3.50.0** pada push/PR. Tes native Android dan pengujian printer fisik dijalankan terpisah sesuai panduan pengembangan.
+
+## Lisensi
+
+Kode asli proyek ini tersedia dengan [lisensi MIT](LICENSE), hak cipta **2026 Dali Parlindungan**. Anda boleh menggunakan, memodifikasi, dan mendistribusikannya, termasuk untuk keperluan komersial, dengan menyertakan pemberitahuan hak cipta dan teks lisensi. Perangkat lunak disediakan tanpa jaminan sesuai teks lisensi.
+
+Dependensi tetap mengikuti lisensinya masing-masing; lihat [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). `publish_to: 'none'` pada `pubspec.yaml` hanya mencegah publikasi aplikasi sebagai paket pub.dev.
+
+## Sebelum publikasi dan rilis
+
+- Periksa isi dan riwayat Git untuk kredensial, keystore, konfigurasi pribadi, serta data transaksi asli. Aturan `.gitignore` tidak menghapus berkas atau rahasia yang sudah masuk riwayat.
+- Pastikan Anda memiliki izin distribusi untuk kode dan aset yang disertakan, lalu sertakan lisensi proyek serta pemberitahuan pihak ketiga pada distribusi.
+- Aktifkan **Private vulnerability reporting** di pengaturan keamanan repositori GitHub agar jalur pada `SECURITY.md` tersedia. Panduan aktivasi ditautkan di berkas tersebut.
+- Untuk rilis APK produksi, tetapkan application ID dan konfigurasi penandatanganan release sendiri. Simpan keystore dan kata sandinya di luar Git; konfigurasi saat ini masih memakai kunci debug.
+- Jalankan pemeriksaan yang relevan, tulis catatan rilis berdasarkan `CHANGELOG.md`, dan jelaskan model printer yang sudah diuji serta keterbatasannya.

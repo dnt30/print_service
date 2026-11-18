@@ -11,9 +11,12 @@ import android.os.ParcelFileDescriptor
 import android.print.PageRange
 import java.io.OutputStream
 import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.math.min
 
 object EscPos {
+    private const val PDF_ZOOM = 1.05f
+
     fun dots(paperMm: Int): Int {
         require(paperMm == 58 || paperMm == 80) { "Ukuran kertas tidak didukung." }
         return if (paperMm == 80) 576 else 384
@@ -66,43 +69,89 @@ object EscPos {
 
     fun pdf(fd: ParcelFileDescriptor, paperMm: Int, copies: Int, output: OutputStream, control: JobControl, cut: Boolean, ranges: Array<PageRange>? = null) {
         PdfRenderer(fd).use { renderer ->
-            require(renderer.pageCount in 1..200) { "Dokumen harus berisi 1–200 halaman." }
-            repeat(copies) {
-                for (pageIndex in 0 until renderer.pageCount) {
-                    if (!ranges.isNullOrEmpty() && ranges.none { pageIndex in it.start..it.end }) continue
-                    control.check()
-                    renderer.openPage(pageIndex).use { page ->
-                        val width = dots(paperMm)
-                        val scale = width.toFloat() / page.width
-                        val height = ceil(page.height * scale).toInt()
-                        require(height in 1..100000) { "Halaman terlalu panjang untuk dicetak." }
-                        var pendingBlank = 0
-                        for (top in 0 until height step 128) {
-                            control.check()
-                            val rows = min(128, height - top)
-                            val bitmap = Bitmap.createBitmap(width, rows, Bitmap.Config.ARGB_8888)
-                            try {
-                                bitmap.eraseColor(Color.WHITE)
-                                val matrix = Matrix().apply { setScale(scale, scale); postTranslate(0f, -top.toFloat()) }
-                                page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
-                                val lastInk = lastInkRow(bitmap)
-                                if (lastInk < 0) pendingBlank += rows
-                                else {
-                                    feed(output, pendingBlank, control)
-                                    pendingBlank = 0
-                                    // Trim the blank tail; preserve it only if more content follows.
-                                    val cropped = Bitmap.createBitmap(bitmap, 0, 0, width, lastInk + 1)
-                                    try { raster(cropped, output, control) }
-                                    finally { if (cropped !== bitmap) cropped.recycle() }
-                                    pendingBlank = rows - lastInk - 1
-                                }
-                            } finally { bitmap.recycle() }
-                        }
+            pdf(renderer, paperMm, copies, output, control, cut, ranges)
+        }
+    }
+
+    fun pdf(renderer: PdfRenderer, paperMm: Int, copies: Int, output: OutputStream, control: JobControl, cut: Boolean, ranges: Array<PageRange>? = null) {
+        require(renderer.pageCount in 1..200) { "Dokumen harus berisi 1–200 halaman." }
+        val layouts = mutableMapOf<Int, PdfLayout>()
+        repeat(copies) {
+            for (pageIndex in 0 until renderer.pageCount) {
+                if (!ranges.isNullOrEmpty() && ranges.none { pageIndex in it.start..it.end }) continue
+                control.check()
+                renderer.openPage(pageIndex).use { page ->
+                    val width = dots(paperMm)
+                    val layout = layouts.getOrPut(pageIndex) { pdfLayout(page, width, control) }
+                    val scale = layout.scale
+                    val height = ceil(page.height * scale).toInt()
+                    require(height in 1..100000) { "Halaman terlalu panjang untuk dicetak." }
+                    var pendingBlank = 0
+                    for (top in 0 until height step 128) {
+                        control.check()
+                        val rows = min(128, height - top)
+                        val bitmap = Bitmap.createBitmap(width, rows, Bitmap.Config.ARGB_8888)
+                        try {
+                            bitmap.eraseColor(Color.WHITE)
+                            val matrix = Matrix().apply { setScale(scale, scale); postTranslate(layout.offsetX, -top.toFloat()) }
+                            page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                            val lastInk = lastInkRow(bitmap)
+                            if (lastInk < 0) pendingBlank += rows
+                            else {
+                                feed(output, pendingBlank, control)
+                                pendingBlank = 0
+                                // Trim the blank tail; preserve it only if more content follows.
+                                val cropped = Bitmap.createBitmap(bitmap, 0, 0, width, lastInk + 1)
+                                try { raster(cropped, output, control) }
+                                finally { if (cropped !== bitmap) cropped.recycle() }
+                                pendingBlank = rows - lastInk - 1
+                            }
+                        } finally { bitmap.recycle() }
                     }
                 }
-                finish(output, cut)
             }
+            finish(output, cut)
         }
+    }
+
+    private data class PdfLayout(val scale: Float, val offsetX: Float)
+
+    /** Use blank side margins for a small enlargement, capped to keep all ink on paper. */
+    private fun pdfLayout(page: PdfRenderer.Page, width: Int, control: JobControl): PdfLayout {
+        val baseScale = width.toFloat() / page.width
+        val height = ceil(page.height * baseScale).toInt()
+        require(height in 1..100000) { "Halaman terlalu panjang untuk dicetak." }
+        var firstInk = width
+        var lastInk = -1
+        val pixels = IntArray(width * 128)
+        for (top in 0 until height step 128) {
+            control.check()
+            val rows = min(128, height - top)
+            val bitmap = Bitmap.createBitmap(width, rows, Bitmap.Config.ARGB_8888)
+            try {
+                bitmap.eraseColor(Color.WHITE)
+                val matrix = Matrix().apply { setScale(baseScale, baseScale); postTranslate(0f, -top.toFloat()) }
+                page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                bitmap.getPixels(pixels, 0, width, 0, 0, width, rows)
+                for (index in 0 until width * rows) {
+                    if (RasterEncoder.isInk(pixels[index])) {
+                        val x = index % width
+                        firstInk = min(firstInk, x)
+                        lastInk = max(lastInk, x)
+                    }
+                }
+            } finally { bitmap.recycle() }
+            if (firstInk == 0 && lastInk == width - 1) break
+        }
+        if (lastInk < 0) return PdfLayout(baseScale, 0f)
+        // Leave a two-dot guard for rounding and antialiasing at the new scale.
+        val left = (firstInk - 2).coerceAtLeast(0)
+        val right = (lastInk + 3).coerceAtMost(width)
+        val zoom = min(PDF_ZOOM, width.toFloat() / (right - left))
+        val minOffset = -left * zoom
+        val maxOffset = (width - right * zoom).coerceAtLeast(minOffset)
+        val offset = ((width - width * zoom) / 2).coerceIn(minOffset, maxOffset)
+        return PdfLayout(baseScale * zoom, offset)
     }
 
     private fun lastInkRow(bitmap: Bitmap): Int {

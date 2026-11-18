@@ -1,0 +1,56 @@
+name: Laporan bug
+description: Laporkan masalah yang dapat direproduksi pada aplikasi atau hasil cetak.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cari issue serupa sebelum melapor. Gunakan data buatan dan samarkan alamat Bluetooth/MAC, data pelanggan, kredensial, serta URL privat.
+        Untuk kerentanan keamanan, ikuti [SECURITY.md](https://github.com/dnt30/print_service/blob/HEAD/SECURITY.md) dan gunakan kanal privat.
+  - type: input
+    id: version
+    attributes:
+      label: Versi aplikasi atau commit
+      placeholder: "Contoh: 1.1.2+4 atau hash commit"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Ponsel dan versi Android
+      placeholder: "Contoh: Pixel 8, Android 16; atau pratinjau web"
+    validations:
+      required: true
+  - type: textarea
+    id: printer
+    attributes:
+      label: Printer dan browser
+      description: Isi jika terkait pencetakan. Sebutkan model printer, protokol, kertas 58/80 mm, serta nama dan versi browser. Jangan sertakan alamat MAC asli.
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Langkah reproduksi
+      placeholder: |
+        1. Buka ...
+        2. Pilih ...
+        3. Tekan ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Hasil yang diharapkan
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Hasil yang terjadi
+      description: Sertakan pesan kesalahan bila ada.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Log atau tangkapan layar
+      description: Opsional. Periksa dan samarkan data pribadi sebelum mengunggah.
